@@ -5,10 +5,17 @@ from openpyxl.drawing.image import Image
 from openpyxl.styles import PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.chart import BarChart, Reference
+import pandas as pd
+import matplotlib.pyplot as plt
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.drawing.image import Image
+from io import BytesIO
 
 from modules.colors import lighten_color
 
-def save_dataframe_to_excel(output_dir, output_file, data, sheet_name, columns_to_plot, colors, grafico_positions, barChart, comparacion, metricas, valores_nuevos, valores_antiguos, comparacion_recurrentes, metricas_recurrentes, valores_sin_recurrentes, valores_recurrentes, comparacion_sub, metricas_sub, valores_sub, valores_oto):
+def save_dataframe_to_excel(output_dir, output_file, data, sheet_name, columns_to_plot, colors, grafico_positions):
    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -18,14 +25,7 @@ def save_dataframe_to_excel(output_dir, output_file, data, sheet_name, columns_t
 
     wb = Workbook()
     wbLineChart = line_chart(wb, sheet_name, data, columns_to_plot, colors, grafico_positions)
-
-    if barChart:
-        wbBarChart = bar_chart(wbLineChart, comparacion, metricas, valores_nuevos, valores_antiguos, 'Nuevos', 'Antiguos')
-        wbBarChartRecurrentes = bar_chart(wbBarChart, comparacion_recurrentes, metricas_recurrentes, valores_sin_recurrentes, valores_recurrentes, 'No', 'Recurrentes')
-        wbBarChartsub = bar_chart(wbBarChartRecurrentes, comparacion_sub, metricas_sub, valores_sub, valores_oto, 'Sub', 'OTO')
-        wbBarChartsub.save(full_path)
-    else:
-       wbLineChart.save(full_path) 
+    wbLineChart.save(full_path) 
 
     # Hoja 1: Resumen General
 
@@ -82,72 +82,6 @@ def line_chart(wb, sheet_name, data, columns_to_plot, colors, grafico_positions)
         ws1.column_dimensions[column].width = max(max_length + 2, 15)
 
     return wb
-
-def bar_chart(wb, comparacion, metricas, valores_nuevos, valores_antiguos, valor1, valor2):
-    # Hoja 2: Comparación Nuevos vs Antiguos
-    ws2 = wb.create_sheet(title=f"{valor1} vs {valor2}")
-
-    # Añadir los datos a la hoja
-    for r in dataframe_to_rows(comparacion, index=False, header=True):
-        ws2.append(r)
-
-    # Colores para los gráficos
-    colores = ['#4CAF50', '#FFC107']
-    grafico_positions2 = ['E2', 'E18', 'E34', 'E50', 'E66', 'E82', 'E98']
-
-    for i, (metrica, valor_nuevos, valor_antiguos, position) in enumerate(zip(metricas, valores_nuevos, valores_antiguos, grafico_positions2)):
-        plt.figure(figsize=(8, 6))
-        plt.bar([valor1, valor2], [valor_nuevos, valor_antiguos], color=colores)
-        plt.title(f"Comparación de {metrica}")
-        plt.ylabel(metrica)
-        plt.tight_layout()
-
-        chart_image_path = f"comparison_{metrica}.png"
-        plt.savefig(chart_image_path)
-        plt.close()
-
-        img = Image(chart_image_path)
-        img.width = 500
-        img.height = 300
-        ws2.add_image(img, position)
-
-    light_colorA = lighten_color(colores[0], factor=0.5)
-    ws2.cell(row=1, column=2).fill = PatternFill(start_color=light_colorA[1:], end_color=light_colorA[1:], fill_type="solid")
-    light_colorB = lighten_color(colores[1], factor=0.5)
-    ws2.cell(row=1, column=3).fill = PatternFill(start_color=light_colorB[1:], end_color=light_colorB[1:], fill_type="solid")
-
-    # Ajustar el tamaño de las celdas en la segunda hoja
-    for col in ws2.columns:
-        max_length = 0
-        column = col[0].column_letter
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except:
-                pass
-        ws2.column_dimensions[column].width = max(max_length + 2, 15)
-
-    # Guardar el archivo de Excel
-    return wb
-
-import pandas as pd
-import matplotlib.pyplot as plt
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.drawing.image import Image
-from io import BytesIO
-
-
-import pandas as pd
-import matplotlib.pyplot as plt
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.drawing.image import Image
-from io import BytesIO
-
 
 def save_error_reasons_with_chart(output_dir, file_name, error_reasons, is_payment):
     """
@@ -262,4 +196,69 @@ def save_dataframe_to_excel_orders(output_dir, output_file, data, sheet_name, co
     wbLineChart.save(full_path)
 
     print(f"Archivo guardado en: {full_path}")
+
+
+def save_dataframe_to_excel_ga4(percentages_table, percentages_previous_step, final_table_spaced_with_previous, nombre_salida):
+    # Crear una gráfica a partir de la tabla de porcentajes, excluyendo la columna "Total"
+    plt.figure(figsize=(10, 6))
+    for step in percentages_table.index:
+        # Acortar el nombre del paso para que las etiquetas sean más cortas
+        short_label = step.replace(' (%)', '').split(' ')[0]  # Usa solo la primera palabra del paso como etiqueta
+        numeric_values = percentages_table.loc[step].drop('Total', errors='ignore').replace('%', '', regex=True).astype(float)
+        plt.plot(numeric_values, label=short_label)
+
+    plt.title('Percentage Transition by Step')
+    plt.xlabel('Days')
+    plt.ylabel('Percentage')
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize='small')  # Ajusta el tamaño de la fuente
+    plt.grid(True)
+    plt.tight_layout()
+
+    # Guardar la gráfica en un archivo temporal
+    chart_path = 'firstStep.png'
+    plt.savefig(chart_path)
+    plt.close()
+
+    # Crear una gráfica a partir de la tabla de porcentajes, excluyendo la columna "Total"
+    plt.figure(figsize=(10, 6))
+    for step in percentages_previous_step.index:
+        # Acortar el nombre del paso para que las etiquetas sean más cortas
+        short_label = step.split(' (')[0]  # Elimina la parte que indica el paso anterior
+        numeric_values = percentages_previous_step.loc[step].drop('Total', errors='ignore').replace('%', '', regex=True).astype(float)
+        plt.plot(numeric_values, label=short_label)
+
+    plt.title('Percentage Step vs Previous')
+    plt.xlabel('Days')
+    plt.ylabel('Percentage')
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize='small')  # Ajusta el tamaño de la fuente
+    plt.grid(True)
+    plt.tight_layout()
+
+    # Guardar la gráfica en un archivo temporal
+    chart_path_previous = 'stepPrevious.png'
+    plt.savefig(chart_path_previous)
+    plt.close()
+
+
+    # Guardar la tabla final y la gráfica en un archivo Excel
+    with pd.ExcelWriter(nombre_salida, engine='xlsxwriter') as writer:
+        final_table_spaced_with_previous.to_excel(writer, sheet_name='Data', index=True, startrow=0, startcol=0)
+        workbook = writer.book
+        worksheet = writer.sheets['Data']
+
+        # Ajustar el ancho de la columna de los pasos
+        max_step_length = max(len(str(step)) for step in final_table_spaced_with_previous.index)
+        worksheet.set_column(0, 0, max_step_length + 2)
+
+        # Insertar la gráfica en el archivo Excel
+        worksheet.insert_image('B18', chart_path)
+        # Insertar la gráfica en el archivo Excel
+        worksheet.insert_image('R18', chart_path_previous)
+
+        # Eliminar las imágenes temporales
+    try:
+        os.remove(chart_path)
+        os.remove(chart_path_previous)
+    except OSError as e:
+        print(f"Error al eliminar las imágenes: {e}")
 
