@@ -1,4 +1,4 @@
-# Business Metrics Extraction and Reporting Tool
+# 1. Business Metrics Extraction and Reporting Tool
 
 ## Overview
 
@@ -94,7 +94,7 @@ This script is responsible for processing sales data from the database, performi
 
 4. `main.py`
    
-This file serves as an entry point for the management and execution of processes related to orders, sales and payment errors based on user-selected dates.
+This file serves as an entry point for the management and execution of processes related to orders, sales, payment errors based on user-selected dates and Google Analyticts funnels.
 
 ### Supporting Modules
 
@@ -202,7 +202,7 @@ Each report generates an Excel file with:
 
 
 
-# Funnel Analytics Dashboard: CSV to Excel Data Processor
+# 2. Funnel Analytics Dashboard: CSV to Excel Data Processor
 
 ## Overview
 
@@ -233,72 +233,56 @@ This Python project processes CSV files exported from Google Analytics to genera
 
 ## Components
 
-### 1. readCSV.py
+### 1. selectFiles.py
 
-This module facilitates the selection, combination and export of CSV files. It is especially useful when handling multiple data sources that need to be processed together.
+This module facilitates the selection of CSV files. It is especially useful when handling multiple data sources.
 
   - Functions:
   
-    - CSV File Selection (select_files)
-    Opens a dialog to select multiple CSV files from the file system.
+    - CSV File Selection (seleccionar_archivos_para_casos)
+    Allows the user to select CSV files associated with different case studies and choose a month (first or second) to process the data. It is an interactive graphical interface developed with tkinter that facilitates data entry in a visual and user-friendly way.
     
-    - CSV File Merge (merge_csv)
-    Combines multiple CSV files into a single DataFrame.
-    Automatically removes the first 6 rows from the first file and 7 rows from the remaining files, assuming they contain unnecessary data such as repeated headers.
-    
-    - Processing and Exporting (read_csv_files)
-    Selects CSV files, combines them and allows to save the result in an Excel (.xlsx) file.
-    Prompts the user for a name for the output file via a pop-up window.
-
-### 2. ga4Data.py
+### 2. ga4Funnels.py
 
 This script processes data related to user funnels from CSV files and generates a detailed analysis including charts and graphs. It is ideal for analysing how users progress through a conversion funnel and calculating key metrics.
 
   - Functions:
     
-      - Load and Clean Data
-      Use the readCSV module to select and combine multiple CSV files.
-      Filter out irrelevant columns such as Completion rate, Abandonments, and Abandonment rate.
-      Separates total rows from daily rows for clearer analysis.
-      
-      - Analysis and Metrics Calculation
-      Create pivot tables to group data by Steps and Days.
-      Calculate percentages:
-      Relative to the first step (100% as a reference).
-      Relative to the previous step (transition between steps).
-      Format results to include absolute and percentage metrics in separate tables.
-      
-      - Results Visualisation
-      Generates graphs that represent:
-      Percentages relative to the first step per day.
-      Transition percentages between steps per day.
-      Saves visualisations as images.
-      
-      - Export to Excel
-      Combines tables and graphs in an Excel file:
-      Absolute and percentage data tables.
-      Analysis charts embedded in spreadsheets.
-      
+      - Get the data (get_funnel)
+      Processes a Google Analytics 4 (GA4) CSV file containing funnel data to generate a detailed analysis. This analysis includes organizing data, calculating percentages, and exporting results to an Excel file along with generated graphs.
+  
 ## Usage
 
 1. Ensure all required libraries are installed
 2. Run `ga4Data.py`
-3. Select Google Analytics CSV files when prompted
-  - To obtain these files you need to go to Google analytics and select any of the funnels that you want to obtain data, in the date range select a maximum of 15 days as this is what Google analytics allows us and download it in csv format (so you can download several files from a range of 15 days until you get the expected range).
+3. Select the corresponding file downloaded from Google Analytics with each report.
+  - To obtain these files you need to go to Google analytics and select any of the funnels that you want to obtain data and download it in csv format.
     
-    ![image](https://github.com/user-attachments/assets/86339eaf-6bd9-4320-b533-063468b1c4f3)
-    https://analytics.google.com/analytics/web/?authuser=1#/analysis/p338732175
+    ![image](https://github.com/user-attachments/assets/5bbb15ef-a7e8-4d66-af32-aaf4b38d0e17)
 
-4. Provide an output Excel filename
+    [Google Analytics](https://analytics.google.com/analytics/web/?authuser=1#/p338732175/reports/reportinghub?params=_u..nav%3Dmaui)
+
+4. Select the month in which you want the data to be annotated in the metrics.xlsx file (see 3. General Report section below).
 5. Review generated Excel report with metrics and charts
 
 ## How It Works
 
 1. Select multiple CSV files from Google Analytics
-2. Files are combined and preprocessed
-3. Data is transformed to show:
+2. Data is transformed to show:
    - Active users per step
    - Percentage progression between steps
    - Daily and total metrics
-4. Line charts visualize progression
-5. Data exported to Excel with embedded charts
+3. Line charts visualize progression
+4. Data exported to Excel with embedded charts
+
+# 3. General Report 
+
+## Overview
+
+This section allows you to record the data obtained from all the files generated in the previous sections in a single file to centralize the information.
+
+## How It Works
+
+1. Have the file `metricas.xlsx` (provided in the repository) located in the same base folder of the repository
+2. If the name of the file or sheet is changed, go to `report.py` and change the variables `archivo_excel` and `hoja_nombre` to the corresponding ones.
+3. This step is not necessary for the execution of the code, so if you do not want to obtain these metrics, the `metricas.xlsx` file can be deleted.
