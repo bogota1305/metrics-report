@@ -1,0 +1,211 @@
+import pandas as pd
+import mysql.connector
+import matplotlib.pyplot as plt
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.drawing.image import Image
+from openpyxl.styles import PatternFill
+from tkinter import Tk, Label, Button, Entry
+from tkinter import messagebox
+from tkcalendar import Calendar
+from modules.colors import lighten_color
+from modules.database_queries import execute_query
+from modules.date_selector import open_date_selector
+from modules.excel_creator import save_dataframe_to_excel, save_dataframe_to_excel_orders
+from report import anotar_datos_excel
+
+def consulta(start_date, end_date):
+
+    query_orders = f"""
+    SELECT *
+    FROM bi.fact_orders
+    WHERE created_at >= '{start_date} 00:00:00' -- Fecha de inicio
+    AND created_at < '{end_date} 00:00:00' -- Fecha actual
+    AND status NOT IN ('CANCELLED', 'PAYMENT_ERROR') -- Excluir estados
+    """
+
+    # Consulta para obtener los datos de fact_sales_order_items
+    query_items = f"""
+    SELECT fsoi.*
+    FROM bi.fact_sales_order_items fsoi
+    JOIN (
+        SELECT id
+        FROM bi.fact_orders
+        WHERE created_at >= '{start_date} 00:00:00' -- Fecha de inicio
+        AND created_at < '{end_date} 00:00:00' -- Fecha final
+        AND status NOT IN ('CANCELLED', 'PAYMENT_ERROR') -- Excluir estados
+    ) fo ON fsoi.salesOrderId = fo.id
+    WHERE fsoi.itemId IN (
+        'IT00000000000000000000001004170001',
+        'IT00000000000000000000001004170002',
+        'IT00000000000000000000001004170003',
+        'IT00000000000000000000001004170004',
+        'IT00000000000000000000001004170005',
+        'IT00000000000000000000001004170006',
+        'IT00000000000000000000001004170007',
+        'IT00000000000000000000000000000082',
+        'IT00000000000000000000000000000083',
+        'IT00000000000000000000000000000084',
+        'IT00000000000000000000000000000085',
+        'IT00000000000000000000000000000086',
+        'IT00000000000000000000000000000087',
+        'IT00000000000000000000000000000088',
+        'IT00000000000000000000000000000089',
+        'IT00000000000000000000000000000090',
+        'IT00000000000000000000000000000091',
+        'IT00000000000000000000000000000092',
+        'IT00000000000000000000000000000093',
+        'IT00000000000000000000000000000094',
+        'IT00000000000000000000000000000095'
+    );
+    """
+    sO = execute_query(query_orders)
+
+    sO_sin_recurrentes = sO[sO['recurrent'] == 0]
+    
+    # Crear grupos por tipo de usuario
+    usuarios_nuevos = sO_sin_recurrentes[sO_sin_recurrentes['is_first_order'] == 1]
+    usuarios_antiguos = sO_sin_recurrentes[sO_sin_recurrentes['is_first_order'] == 0]
+
+    usuarios_nuevos_sub = usuarios_nuevos[usuarios_nuevos['order_plan'] == 'SUBSCRIPTION']
+    usuarios_nuevos_oto = usuarios_nuevos[usuarios_nuevos['order_plan'] == 'OTO']
+    usuarios_nuevos_mix = usuarios_nuevos[usuarios_nuevos['order_plan'] == 'MIXED']
+    
+    usuarios_antiguos_sub = usuarios_antiguos[usuarios_antiguos['order_plan'] == 'SUBSCRIPTION']
+    usuarios_antiguos_oto = usuarios_antiguos[usuarios_antiguos['order_plan'] == 'OTO']
+    usuarios_antiguos_mix = usuarios_antiguos[usuarios_antiguos['order_plan'] == 'MIXED']
+
+    sO_con_recurrentes = sO[sO['recurrent'] == 1]
+
+    return usuarios_nuevos_sub, usuarios_nuevos_oto, usuarios_nuevos_mix, usuarios_antiguos_sub, usuarios_antiguos_oto, usuarios_antiguos_mix, sO_con_recurrentes, usuarios_antiguos, usuarios_nuevos
+
+def process_data(metrica, start_date, end_date):
+    # Convertir fechas
+    metrica['created_at'] = pd.to_datetime(metrica['created_at'])
+    metrica['date'] = metrica['created_at'].dt.date
+
+    # Crear un rango completo de fechas
+    all_dates = pd.date_range(start=start_date, end=end_date).date
+    all_dates_df = pd.DataFrame({'date': all_dates})
+
+    # Cálculo de valores diarios
+    daily_summary = metrica.groupby('date').agg(
+        total_revenue=('total', 'sum'),
+        total_sales=('order_number', 'count'),
+        total_items=('units', 'sum'),
+    ).reset_index()
+
+    # Fusionar con todas las fechas
+    daily_summary = pd.merge(all_dates_df, daily_summary, on='date', how='left').fillna(0)
+
+    # Agregar las columnas de promedio
+    daily_summary['average_items'] = (
+        daily_summary['total_items'] / daily_summary['total_sales'].replace(0, 1)
+    ).where(daily_summary['total_sales'] > 0, 0)  # Forzar a 0 si total_sales es 0
+
+    daily_summary['average_value'] = (
+        daily_summary['total_revenue'] / daily_summary['total_sales'].replace(0, 1)
+    ).where(daily_summary['total_sales'] > 0, 0)  # Forzar a 0 si total_sales es 0
+
+    # Cálculo de totales generales
+    suma_total = metrica['total'].sum()
+    total_ventas = metrica['total'].count()
+    total_items = metrica['units'].sum()
+    average_items = total_items / total_ventas if total_ventas > 0 else 0
+    average_value = suma_total / total_ventas if total_ventas > 0 else 0
+
+    # Resumen total
+    totals_row = pd.DataFrame([{
+        'date': 'Total',
+        'total_revenue': suma_total,
+        'total_sales': total_ventas,
+        'total_items': total_items,
+        'average_items': average_items,
+        'average_value': average_value,
+    }])
+
+    daily_summary = pd.concat([daily_summary, totals_row], ignore_index=True)
+
+    return daily_summary, average_items, average_value
+
+
+def documento(resumeData, file_name, folder_name):
+
+    columns_to_plot = ['total_revenue', 'total_sales', 'total_items', 'average_items', 'average_value']
+    colors = ['#0000FF', '#008000', '#FF0000', '#6F4E37', '#FF00FF']
+    grafico_positions = ['H2', 'H24', 'H46', 'H68', 'H90']
+
+    save_dataframe_to_excel_orders(folder_name, file_name, resumeData, 'General', columns_to_plot, colors, grafico_positions)
+
+
+def get_orders(start_date, end_date, folder_name, unique_orders_var):
+
+    usuarios_nuevos_sub, usuarios_nuevos_oto, usuarios_nuevos_mix, usuarios_antiguos_sub, usuarios_antiguos_oto, usuarios_antiguos_mix, recurrentes, usuarios_antiguos, usuarios_nuevos = consulta(start_date, end_date)
+
+    #------------------------------------------------------------------------------------------------
+
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date)
+    new_end_date = (end_date - pd.DateOffset(days=1)).strftime('%Y-%m-%d')
+    items = ['', '', '', '', '', '', '', '', '']
+    values = ['', '', '', '', '', '', '', '', '']
+
+    if(unique_orders_var[0] == 1):
+        data_usuarios_nuevos_sub, average_items, average_value = process_data(usuarios_nuevos_sub, start_date, new_end_date)
+        documento(data_usuarios_nuevos_sub, f'New users - SUBS', folder_name)
+        items.insert(0, average_items)
+        values.insert(0, average_value)
+
+    if(unique_orders_var[1] == 1):
+        data_usuarios_nuevos_oto, average_items, average_value = process_data(usuarios_nuevos_oto, start_date, new_end_date)
+        documento(data_usuarios_nuevos_oto, f'New users - OTO', folder_name)
+        items.insert(1, average_items)
+        values.insert(1, average_value)
+
+    if(unique_orders_var[2] == 1):
+        data_usuarios_nuevos_mix, average_items, average_value = process_data(usuarios_nuevos_mix, start_date, new_end_date)
+        documento(data_usuarios_nuevos_mix, f'New users - MIX', folder_name)
+        items.insert(2, average_items)
+        values.insert(2, average_value)
+
+    if(unique_orders_var[3] == 1):
+        data_usuarios_nuevos, average_items, average_value = process_data(usuarios_nuevos, start_date, new_end_date)
+        documento(data_usuarios_nuevos, f'New users - ALL', folder_name)
+        items.insert(3, average_items)
+        values.insert(3, average_value)
+
+    if(unique_orders_var[4] == 1):
+        data_usuarios_antiguos_sub, average_items, average_value = process_data(usuarios_antiguos_sub, start_date, new_end_date)
+        documento(data_usuarios_antiguos_sub, f'Non recurrent orders of existing users - SUBS', folder_name)
+        items.insert(4, average_items)
+        values.insert(4, average_value)
+
+    if(unique_orders_var[5] == 1):
+        data_usuarios_antiguos_oto, average_items, average_value = process_data(usuarios_antiguos_oto, start_date, new_end_date)
+        documento(data_usuarios_antiguos_oto, f'Non recurrent orders of existing users - OTO', folder_name)
+        items.insert(5, average_items)
+        values.insert(5, average_value)
+
+    if(unique_orders_var[6] == 1):
+        data_usuarios_antiguos_mix, average_items, average_value = process_data(usuarios_antiguos_mix, start_date, new_end_date)
+        documento(data_usuarios_antiguos_mix, f'Non recurrent orders of existing users - MIX', folder_name)
+        items.insert(6, average_items)
+        values.insert(6, average_value)
+
+    if(unique_orders_var[7] == 1):
+        data_usuarios_antiguos, average_items, average_value = process_data(usuarios_antiguos, start_date, new_end_date)
+        documento(data_usuarios_antiguos, f'Non recurrent orders of existing users - ALL', folder_name)
+        items.insert(7, average_items)
+        values.insert(7, average_value)
+
+    if(unique_orders_var[8] == 1):
+        data_recurrentes, average_items, average_value = process_data(recurrentes, start_date, new_end_date)
+        documento(data_recurrentes, f'Recurrent Orders (ALL)', folder_name)
+        items.insert(8, average_items)
+        values.insert(8, average_value)
+
+    return values, items
+
+
+
+
