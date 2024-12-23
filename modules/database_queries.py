@@ -3,9 +3,9 @@ import mysql.connector
 from tkinter import Tk, Label, Entry, Button
 
 # Variables globales para la conexión
-host = 'prod0.db.becleverman.com'
-user = 'prodproductuser'
-password = 'YVE1RbUidDBk3qMHZUlLDSVPEqHN9y3YCrmu5b1GgwGcXy9V8A'
+host = ''
+user = ''
+password = ''
 
 def execute_query(query):
     """Ejecuta una consulta SQL y devuelve un DataFrame."""
