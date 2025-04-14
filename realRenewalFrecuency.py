@@ -1,0 +1,214 @@
+import os
+import pandas as pd
+import numpy as np
+from modules.database_queries import execute_query
+from datetime import datetime
+from uploadCloud import upload_to_drive, upload_to_dropbox
+
+def renewalFrequency(query, fileName):
+    # Obtener datos desde la base de datos
+    data = execute_query(query)
+    
+    # Convertir a DataFrame
+    df = pd.DataFrame(data, columns=['order_number', 'subscription_id', 'created_at', 'legacy_category', 'delivery_frequency'])
+    
+    # Convertir fechas
+    df['created_at'] = pd.to_datetime(df['created_at'])
+    
+    # Función para extraer frecuencia en semanas desde delivery_frequency
+    def extract_frequency(delivery_freq):
+        try:
+            if pd.isna(delivery_freq):
+                return None
+            days = int(delivery_freq.split()[0])
+            return days / 7  # Convertir a semanas
+        except:
+            return None
+    
+    df['frequency_weeks'] = df['delivery_frequency'].apply(extract_frequency)
+    
+    # Procesar cada suscripción
+    results = []
+    for sub_id, group in df.groupby('subscription_id'):
+        if len(group) >= 2:
+            # Ordenar por fecha (más reciente primero)
+            sorted_orders = group.sort_values('created_at', ascending=False)
+            
+            # Tomar las 2 órdenes más recientes
+            last_two = sorted_orders.head(2)
+            
+            # Calcular diferencia en días
+            days_diff = (last_two.iloc[0]['created_at'] - last_two.iloc[1]['created_at']).days
+            weeks_diff = days_diff / 7
+            
+            results.append({
+                'subscription_id': sub_id,
+                'days_between_orders': days_diff,
+                'weeks_between_orders': weeks_diff,
+                'frequency_weeks': last_two.iloc[0]['frequency_weeks'],
+                'category': last_two.iloc[0]['legacy_category']
+            })
+    
+    if not results:
+        print(f"No hay suficientes datos para generar reporte ({fileName})")
+        return
+    
+    result_df = pd.DataFrame(results)
+    
+    # Calcular promedios generales
+    general_avg_weeks = result_df['weeks_between_orders'].mean()
+    general_avg_days = result_df['days_between_orders'].mean()
+    freq_avg_weeks = result_df['frequency_weeks'].mean()
+    
+    # Calcular promedios por categoría
+    beard_data = result_df[result_df['category'] == 'BEARD']
+    beard_avg_weeks = beard_data['weeks_between_orders'].mean()
+    beard_avg_days = beard_data['days_between_orders'].mean()
+    
+    hair_data = result_df[result_df['category'] == 'HAIR']
+    hair_avg_weeks = hair_data['weeks_between_orders'].mean()
+    hair_avg_days = hair_data['days_between_orders'].mean()
+    
+    # Crear DataFrames para las hojas de Excel
+    details_df = result_df[[
+        'subscription_id', 
+        'days_between_orders', 
+        'weeks_between_orders',
+        'frequency_weeks',
+        'category'
+    ]]
+    
+    comparison_df = pd.DataFrame({
+        'Metric': [
+            'Configured Frequency (avg)',
+            'Actual Frequency (avg)',
+            'BEARD Frequency (avg)',
+            'HAIR Frequency (avg)'
+        ],
+        'Weeks': [
+            freq_avg_weeks,
+            general_avg_weeks,
+            beard_avg_weeks,
+            hair_avg_weeks
+        ],
+        'Days': [
+            freq_avg_weeks * 7,
+            general_avg_days,
+            beard_avg_days,
+            hair_avg_days
+        ]
+    })
+    
+    # Crear archivo Excel
+    with pd.ExcelWriter(fileName) as writer:
+        # Hoja de detalles
+        details_df.to_excel(writer, sheet_name='Subscription Details', index=False)
+        
+        # Hoja de comparación
+        comparison_df.to_excel(writer, sheet_name='Frequency Comparison', index=False)
+        
+        # Ajustar formatos automáticamente al contenido
+        workbook = writer.book
+        
+        # Función para ajustar ancho de columnas
+        def auto_adjust_columns(worksheet, df):
+            for idx, col in enumerate(df.columns):
+                max_len = max((
+                    df[col].astype(str).map(len).max(),  # Longitud máxima de los datos
+                    len(str(col))  # Longitud del nombre de la columna
+                )) + 2  # Pequeño margen
+                worksheet.set_column(idx, idx, max_len)
+        
+        # Aplicar a ambas hojas
+        auto_adjust_columns(writer.sheets['Subscription Details'], details_df)
+        auto_adjust_columns(writer.sheets['Frequency Comparison'], comparison_df)
+    
+    print(f"Reporte generado: {fileName}")
+    print(f"Suscripciones analizadas: {len(result_df)}")
+    print(f"Frecuencia promedio real: {general_avg_weeks:.2f} semanas")
+
+def realRenewalFrequency(start_date, end_date, folder_name):
+    # Consulta SQL para suscripciones sin Full Control
+    queryNoFC = f"""
+    SELECT
+        fo.order_number,
+        fo.subscription_id,    
+        fo.created_at,
+        sv.legacy_category,
+        sv.delivery_frequency
+    FROM 
+        bi.fact_orders fo
+    JOIN
+        sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
+    JOIN
+        sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
+    WHERE 
+        fo.subscription_id IS NOT NULL
+        AND (
+            (
+                su.additionalFields ->> "$.sms_renewal" = "false" 
+                OR su.additionalFields ->> "$.sms_renewal" IS NULL
+            ) 
+        )
+        AND su.status != 'CANCELLED'
+        AND fo.status != 'CANCELLED'
+        AND su.createdAt > '{start_date}' AND su.createdAt < '{end_date}'
+    """
+
+    # Consulta SQL para suscripciones con Full Control
+    queryFC = f"""
+    SELECT
+        fo.order_number,
+        fo.subscription_id,    
+        fo.created_at,
+        sv.legacy_category,
+        sv.delivery_frequency
+    FROM 
+        bi.fact_orders fo
+    JOIN
+        sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
+    JOIN
+        sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
+    WHERE 
+        fo.subscription_id IS NOT NULL
+        AND su.additionalFields ->> "$.sms_renewal" = "true" 
+        AND su.status != 'CANCELLED'
+        AND fo.status != 'CANCELLED'
+        AND su.createdAt > '{start_date}' AND su.createdAt < '{end_date}'
+    """
+
+    # Consulta SQL para todas las suscripciones
+    queryAll = f"""
+    SELECT
+        fo.order_number,
+        fo.subscription_id,    
+        fo.created_at,
+        sv.legacy_category,
+        sv.delivery_frequency
+    FROM 
+        bi.fact_orders fo
+    JOIN
+        sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
+    JOIN
+        sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
+    WHERE 
+        fo.subscription_id IS NOT NULL    
+        AND su.status != 'CANCELLED'
+        AND fo.status != 'CANCELLED'
+        AND su.createdAt > '{start_date}' AND su.createdAt < '{end_date}'
+    """
+
+    saveFile(folder_name, 'renewal_frequency_noFC.xlsx', queryNoFC)
+    saveFile(folder_name, 'renewal_frequency_FC.xlsx', queryFC)
+    saveFile(folder_name, 'renewal_frequency_ALL.xlsx', queryAll)
+
+def saveFile(folder_name, file_name, query):
+
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+    # Construir la ruta completa del archivo
+    full_path = os.path.join(folder_name, file_name)
+    renewalFrequency(query, full_path)
+    #upload_to_drive(full_path, folder_id="1F1VZxlp5IxkQEo4WD0Bt8VEJZ28OhGut")
+    #upload_to_dropbox(full_path, dropbox_path=f"/MyReports/{folder_name}/{file_name}")
