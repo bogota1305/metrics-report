@@ -17,48 +17,25 @@ from report import anotar_datos_excel
 def consulta(start_date, end_date):
 
     query_orders = f"""
-    SELECT *
-    FROM bi.fact_orders
-    WHERE created_at >= '{start_date} 00:00:00' -- Fecha de inicio
-    AND created_at < '{end_date} 00:00:00' -- Fecha actual
-    AND status NOT IN ('CANCELLED', 'PAYMENT_ERROR') -- Excluir estados
+    SELECT 
+        fo.*,
+        CASE
+            WHEN MAX(CASE WHEN fsoi.itemId = 'IT00000000000000000000000000000107' THEN 1 ELSE 0 END) = 1 
+            THEN fo.units - SUM(CASE WHEN fsoi.itemId = 'IT00000000000000000000000000000107' THEN fsoi.quantity ELSE 0 END)
+            ELSE fo.units
+        END AS validItems
+    FROM 
+        bi.fact_orders fo
+    LEFT JOIN 
+        bi.fact_sales_order_items fsoi ON fsoi.salesOrderId = fo.id
+    WHERE
+        fo.created_at >= '{start_date} 00:00:00' 
+        AND fo.created_at < '{end_date} 00:00:00' 
+        AND fo.status NOT IN ('CANCELLED', 'PAYMENT_ERROR') 
+    GROUP BY 
+        fo.id, fo.order_number, fo.units;  
     """
 
-    # Consulta para obtener los datos de fact_sales_order_items
-    query_items = f"""
-    SELECT fsoi.*
-    FROM bi.fact_sales_order_items fsoi
-    JOIN (
-        SELECT id
-        FROM bi.fact_orders
-        WHERE created_at >= '{start_date} 00:00:00' -- Fecha de inicio
-        AND created_at < '{end_date} 00:00:00' -- Fecha final
-        AND status NOT IN ('CANCELLED', 'PAYMENT_ERROR') -- Excluir estados
-    ) fo ON fsoi.salesOrderId = fo.id
-    WHERE fsoi.itemId IN (
-        'IT00000000000000000000001004170001',
-        'IT00000000000000000000001004170002',
-        'IT00000000000000000000001004170003',
-        'IT00000000000000000000001004170004',
-        'IT00000000000000000000001004170005',
-        'IT00000000000000000000001004170006',
-        'IT00000000000000000000001004170007',
-        'IT00000000000000000000000000000082',
-        'IT00000000000000000000000000000083',
-        'IT00000000000000000000000000000084',
-        'IT00000000000000000000000000000085',
-        'IT00000000000000000000000000000086',
-        'IT00000000000000000000000000000087',
-        'IT00000000000000000000000000000088',
-        'IT00000000000000000000000000000089',
-        'IT00000000000000000000000000000090',
-        'IT00000000000000000000000000000091',
-        'IT00000000000000000000000000000092',
-        'IT00000000000000000000000000000093',
-        'IT00000000000000000000000000000094',
-        'IT00000000000000000000000000000095'
-    );
-    """
     sO = execute_query(query_orders)
 
     sO_sin_recurrentes = sO[sO['recurrent'] == 0]
@@ -92,7 +69,7 @@ def process_data(metrica, start_date, end_date):
     daily_summary = metrica.groupby('date').agg(
         total_revenue=('total', 'sum'),
         total_sales=('order_number', 'count'),
-        total_items=('units', 'sum'),
+        total_items=('validItems', 'sum'),
     ).reset_index()
 
     # Fusionar con todas las fechas
@@ -110,7 +87,7 @@ def process_data(metrica, start_date, end_date):
     # Cálculo de totales generales
     suma_total = metrica['total'].sum()
     total_ventas = metrica['total'].count()
-    total_items = metrica['units'].sum()
+    total_items = metrica['validItems'].sum()
     average_items = total_items / total_ventas if total_ventas > 0 else 0
     average_value = suma_total / total_ventas if total_ventas > 0 else 0
 
@@ -129,17 +106,17 @@ def process_data(metrica, start_date, end_date):
     return daily_summary, average_items, average_value
 
 
-def documento(resumeData, file_name, folder_name, dropbox_var):
+def documento(resumeData, file_name, folder_name, dropbox_var, drive_var):
 
     columns_to_plot = ['total_revenue', 'total_sales', 'total_items', 'average_items', 'average_value']
     colors = ['#0000FF', '#008000', '#FF0000', '#6F4E37', '#FF00FF']
     grafico_positions = ['H2', 'H24', 'H46', 'H68', 'H90']
 
-    url = save_dataframe_to_excel_orders(folder_name, file_name, resumeData, 'General', columns_to_plot, colors, grafico_positions, dropbox_var)
+    url = save_dataframe_to_excel_orders(folder_name, file_name, resumeData, 'General', columns_to_plot, colors, grafico_positions, dropbox_var, drive_var)
     return url
 
 
-def get_orders(start_date, end_date, folder_name, unique_orders_var, dropbox_var):
+def get_orders(start_date, end_date, folder_name, unique_orders_var, dropbox_var, drive_var):
 
     usuarios_nuevos_sub, usuarios_nuevos_oto, usuarios_nuevos_mix, usuarios_antiguos_sub, usuarios_antiguos_oto, usuarios_antiguos_mix, recurrentes, usuarios_antiguos, usuarios_nuevos = consulta(start_date, end_date)
 
@@ -154,63 +131,63 @@ def get_orders(start_date, end_date, folder_name, unique_orders_var, dropbox_var
 
     if(unique_orders_var[0] == 1):
         data_usuarios_nuevos_sub, average_items, average_value = process_data(usuarios_nuevos_sub, start_date, new_end_date)
-        url = documento(data_usuarios_nuevos_sub, f'New users - SUBS', folder_name, dropbox_var)
+        url = documento(data_usuarios_nuevos_sub, f'New users - SUBS', folder_name, dropbox_var, drive_var)
         items.insert(0, average_items)
         values.insert(0, average_value)
         urls.insert(0, url)    
 
     if(unique_orders_var[1] == 1):
         data_usuarios_nuevos_oto, average_items, average_value = process_data(usuarios_nuevos_oto, start_date, new_end_date)
-        url = documento(data_usuarios_nuevos_oto, f'New users - OTO', folder_name, dropbox_var)
+        url = documento(data_usuarios_nuevos_oto, f'New users - OTO', folder_name, dropbox_var, drive_var)
         items.insert(1, average_items)
         values.insert(1, average_value)
         urls.insert(1, url)
 
     if(unique_orders_var[2] == 1):
         data_usuarios_nuevos_mix, average_items, average_value = process_data(usuarios_nuevos_mix, start_date, new_end_date)
-        url = documento(data_usuarios_nuevos_mix, f'New users - MIX', folder_name, dropbox_var)
+        url = documento(data_usuarios_nuevos_mix, f'New users - MIX', folder_name, dropbox_var, drive_var)
         items.insert(2, average_items)
         values.insert(2, average_value)
         urls.insert(2, url)
 
     if(unique_orders_var[3] == 1):
         data_usuarios_nuevos, average_items, average_value = process_data(usuarios_nuevos, start_date, new_end_date)
-        url = documento(data_usuarios_nuevos, f'New users - ALL', folder_name, dropbox_var)
+        url = documento(data_usuarios_nuevos, f'New users - ALL', folder_name, dropbox_var, drive_var)
         items.insert(3, average_items)
         values.insert(3, average_value)
         urls.insert(3, url)
 
     if(unique_orders_var[4] == 1):
         data_usuarios_antiguos_sub, average_items, average_value = process_data(usuarios_antiguos_sub, start_date, new_end_date)
-        url = documento(data_usuarios_antiguos_sub, f'Non recurrent orders of existing users - SUBS', folder_name, dropbox_var)
+        url = documento(data_usuarios_antiguos_sub, f'Non recurrent orders of existing users - SUBS', folder_name, dropbox_var, drive_var)
         items.insert(4, average_items)
         values.insert(4, average_value)
         urls.insert(4, url)
 
     if(unique_orders_var[5] == 1):
         data_usuarios_antiguos_oto, average_items, average_value = process_data(usuarios_antiguos_oto, start_date, new_end_date)
-        url = documento(data_usuarios_antiguos_oto, f'Non recurrent orders of existing users - OTO', folder_name, dropbox_var)
+        url = documento(data_usuarios_antiguos_oto, f'Non recurrent orders of existing users - OTO', folder_name, dropbox_var, drive_var)
         items.insert(5, average_items)
         values.insert(5, average_value)
         urls.insert(5, url)
 
     if(unique_orders_var[6] == 1):
         data_usuarios_antiguos_mix, average_items, average_value = process_data(usuarios_antiguos_mix, start_date, new_end_date)
-        url = documento(data_usuarios_antiguos_mix, f'Non recurrent orders of existing users - MIX', folder_name, dropbox_var)
+        url = documento(data_usuarios_antiguos_mix, f'Non recurrent orders of existing users - MIX', folder_name, dropbox_var, drive_var)
         items.insert(6, average_items)
         values.insert(6, average_value)
         urls.insert(6, url)
 
     if(unique_orders_var[7] == 1):
         data_usuarios_antiguos, average_items, average_value = process_data(usuarios_antiguos, start_date, new_end_date)
-        url = documento(data_usuarios_antiguos, f'Non recurrent orders of existing users - ALL', folder_name, dropbox_var)
+        url = documento(data_usuarios_antiguos, f'Non recurrent orders of existing users - ALL', folder_name, dropbox_var, drive_var)
         items.insert(7, average_items)
         values.insert(7, average_value)
         urls.insert(7, url)
 
     if(unique_orders_var[8] == 1):
         data_recurrentes, average_items, average_value = process_data(recurrentes, start_date, new_end_date)
-        url = documento(data_recurrentes, f'Recurrent Orders (ALL)', folder_name, dropbox_var)
+        url = documento(data_recurrentes, f'Recurrent Orders (ALL)', folder_name, dropbox_var, drive_var)
         items.insert(8, average_items)
         values.insert(8, average_value)
         urls.insert(8, url)

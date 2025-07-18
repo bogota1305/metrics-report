@@ -20,7 +20,7 @@ def open_date_selector():
         root.destroy()
 
     def toggle_all(state):
-        for var in [all_var] + unique_orders_var + [orders_var, sales_var, payment_errors_var, expected_renewals_var, frequency_var]:
+        for var in [all_var] + unique_orders_var + [orders_var, sales_var, payment_errors_var, expected_renewals_var, frequency_var, full_control_var, subs_var]:
             var.set(state)
 
     def toggle_section_a(state):
@@ -91,6 +91,12 @@ def open_date_selector():
 
     frequency_var = IntVar()
     Checkbutton(variables_frame, text="Real Frequency", variable=frequency_var).grid(row=14, column=0, sticky="w", padx=20)
+
+    full_control_var = IntVar()
+    Checkbutton(variables_frame, text="Full Control", variable=full_control_var).grid(row=15, column=0, sticky="w", padx=20)
+
+    subs_var = IntVar()
+    Checkbutton(variables_frame, text="Subscriptions", variable=subs_var).grid(row=16, column=0, sticky="w", padx=20)
     
 
     # Botón de confirmación
@@ -111,7 +117,7 @@ def open_date_selector():
     ]
 
     if start_date and end_date and output_file:
-        return start_date, end_date, output_file, all_var.get(), orders_var.get(), unique_orders_var, sales_var.get(), payment_errors_var.get(), expected_renewals_var.get(), frequency_var.get()
+        return start_date, end_date, output_file, all_var.get(), orders_var.get(), unique_orders_var, sales_var.get(), payment_errors_var.get(), expected_renewals_var.get(), frequency_var.get(), full_control_var.get(), subs_var.get()
     else:
         messagebox.showerror("Error", "Por favor completa todos los campos.")
         return None, None, None, None, None, None, None, None, None

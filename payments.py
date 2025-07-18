@@ -115,7 +115,7 @@ def process_data(start_date, end_date):
 
     return daily_summary, error_reasons, total_payments
 
-def get_payments(start_date, end_date, folder_name, dropbox_var):
+def get_payments(start_date, end_date, folder_name, dropbox_var, drive_var):
     
     file_name = 'Payment Errors'
     daily_summary, error_reasons, total_payments = process_data(start_date, end_date)
@@ -129,6 +129,6 @@ def get_payments(start_date, end_date, folder_name, dropbox_var):
     save_dataframe_to_excel(folder_name, file_name, daily_summary, 'General', columns_to_plot, colors, grafico_positions, False)
 
     # Guardar razones de error en Excel con Pandas
-    urls = save_error_reasons_with_chart(folder_name, file_name, error_reasons, True, dropbox_var)
+    urls = save_error_reasons_with_chart(folder_name, file_name, error_reasons, True, dropbox_var, drive_var)
 
     return total_payments, urls

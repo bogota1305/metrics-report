@@ -1,15 +1,23 @@
+import os
 from openpyxl import load_workbook
 import tkinter as tk
 from tkinter import BooleanVar, Checkbutton, Button
 
 # Cargar el archivo Excel existente
-archivo_excel = "metricas.xlsx" 
+
 
 hoja_report = "Report"  
 hoja_files = "Files" 
 
-def anotar_datos_excel(datos, columna_inicio, fila_inicio, urls=False):
+
+def anotar_datos_excel(datos, columna_inicio, fila_inicio, urls=False, month = '', primer_uso=False):
     
+    archivo_excel = 'Monthly Report.xlsx'
+    nuevo_archivo = f'Monthly Report {month}.xlsx'
+
+    if primer_uso == False:
+        archivo_excel = nuevo_archivo
+
     try:
         # Intentar cargar el archivo Excel existente
         wb = load_workbook(archivo_excel)
@@ -28,7 +36,7 @@ def anotar_datos_excel(datos, columna_inicio, fila_inicio, urls=False):
         ws.cell(row=i, column=columna_inicio, value=valor)
 
     # Guardar los cambios en el archivo (nuevo o existente)
-    wb.save(archivo_excel)
+    wb.save(nuevo_archivo)
 
 def seleccionar_tipo_de_reporte():
     """
@@ -76,6 +84,7 @@ def seleccionar_tipo_de_reporte():
 def seleccionar_donde_almacenar():
     """
     Muestra una ventana para que el usuario seleccione donde almacenar el reporte.
+    Los checkboxes son mutuamente excluyentes (solo se puede seleccionar uno).
 
     :return: tuple (dropbox_var, drive_var) - Estado de los checkboxes seleccionados por el usuario.
     """
@@ -86,16 +95,31 @@ def seleccionar_donde_almacenar():
     dropbox_var = BooleanVar(value=False)
     drive_var = BooleanVar(value=False)
 
+    # Función para hacer los checkboxes mutuamente excluyentes
+    def toggle_checkboxes(selected_var, other_var):
+        if selected_var.get():  # Si el checkbox actual fue seleccionado
+            other_var.set(False)  # Deseleccionar el otro
+
     # Etiqueta principal
     label = tk.Label(root, text="Seleccione el tipo de reporte")
     label.pack(pady=10)
 
-    # Checkbox para Funnels
-    dropbox_checkbox = Checkbutton(root, text="Dropbox", variable=dropbox_var)
+    # Checkbox para Dropbox
+    dropbox_checkbox = Checkbutton(
+        root, 
+        text="Dropbox", 
+        variable=dropbox_var,
+        command=lambda: toggle_checkboxes(dropbox_var, drive_var)
+    )
     dropbox_checkbox.pack(anchor=tk.W, padx=20)
 
-    # Checkbox para Base de Datos
-    drive_checkbox = Checkbutton(root, text="Google drive", variable=drive_var)
+    # Checkbox para Google Drive
+    drive_checkbox = Checkbutton(
+        root, 
+        text="Google drive", 
+        variable=drive_var,
+        command=lambda: toggle_checkboxes(drive_var, dropbox_var)
+    )
     drive_checkbox.pack(anchor=tk.W, padx=20)
 
     # Función para cerrar la ventana y devolver los valores seleccionados

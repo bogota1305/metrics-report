@@ -11,6 +11,8 @@ def seleccionar_archivos_para_casos():
         "My Account - Funnel": None,
         "Buy Again - Funnel": None,
         "My Subscriptions - Funnel": None,
+        "NPD account - Funnel": None,
+        "NPD mail - Funnel": None,
     }
 
     def seleccionar_archivo(caso, label):
@@ -23,9 +25,6 @@ def seleccionar_archivos_para_casos():
     # Crear ventana principal
     root = tk.Tk()
     root.title("Seleccionar archivos para cada caso")
-    
-    # Variable para almacenar la selección del mes
-    mes_seleccionado = StringVar(value="Primer mes") 
 
     # Crear botones y etiquetas para cada caso
     for caso in archivos_seleccionados.keys():
@@ -42,13 +41,6 @@ def seleccionar_archivos_para_casos():
     # Espaciado entre secciones
     tk.Label(root, text="").pack()
 
-    # Sección para seleccionar el mes
-    tk.Label(root, text="Seleccione el mes:").pack(pady=5)
-
-    # Botones de radio para la selección del mes
-    tk.Radiobutton(root, text="Primer mes", variable=mes_seleccionado, value="Primer mes").pack(anchor="w")
-    tk.Radiobutton(root, text="Segundo mes", variable=mes_seleccionado, value="Segundo mes").pack(anchor="w")
-
     # Botón para confirmar selección
     confirmar = Button(root, text="Confirmar selección", command=root.quit)
     confirmar.pack(pady=20)
@@ -59,12 +51,8 @@ def seleccionar_archivos_para_casos():
     # Cerrar ventana
     root.destroy()
 
-    mes = 2
-    if(mes_seleccionado.get() == 'Primer mes'):
-        mes = 1
-
     # Retornar los archivos seleccionados y el mes elegido
-    return archivos_seleccionados, mes
+    return archivos_seleccionados
 
 def seleccionar_archivos_stripe():
     # Diccionario para almacenar las rutas de los archivos seleccionados

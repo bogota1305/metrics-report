@@ -14,9 +14,9 @@ from openpyxl.drawing.image import Image
 from io import BytesIO
 
 from modules.colors import lighten_color
-from uploadCloud import upload_to_dropbox
+from uploadCloud import upload_to_drive, upload_to_dropbox
 
-def save_dataframe_to_excel(output_dir, output_file, data, sheet_name, columns_to_plot, colors, grafico_positions, dropbox_var):
+def save_dataframe_to_excel(output_dir, output_file, data, sheet_name, columns_to_plot, colors, grafico_positions, dropbox_var=False, drive_var=False):
    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -32,6 +32,8 @@ def save_dataframe_to_excel(output_dir, output_file, data, sheet_name, columns_t
 
     if(output_file != 'Payment Errors' and dropbox_var):
         url = upload_to_dropbox(full_path, dropbox_path=f"/MyReports/{output_dir}/{output_file}.xlsx") 
+    if(output_file != 'Payment Errors' and drive_var):
+        url = upload_to_drive(full_path, folder_id="1F1VZxlp5IxkQEo4WD0Bt8VEJZ28OhGut")
     
     urls.insert(0, url)
 
@@ -95,7 +97,7 @@ def line_chart(wb, sheet_name, data, columns_to_plot, colors, grafico_positions)
 
     return wb
 
-def save_error_reasons_with_chart(output_dir, file_name, error_reasons, is_payment, dropbox_var):
+def save_error_reasons_with_chart(output_dir, file_name, error_reasons, is_payment, dropbox_var, drive_var):
     """
     Guarda las razones de error en una nueva hoja de Excel, pinta las celdas
     con colores dinámicos según la razón de error, añade un gráfico de barras
@@ -195,13 +197,15 @@ def save_error_reasons_with_chart(output_dir, file_name, error_reasons, is_payme
     
     if(dropbox_var):
         url = upload_to_dropbox(full_path, dropbox_path=f"/MyReports/{output_dir}/{file_name}.xlsx")
+    if(drive_var):
+        url = upload_to_drive(full_path, folder_id="1F1VZxlp5IxkQEo4WD0Bt8VEJZ28OhGut")
 
     urls.insert(0, url)
     
     return urls
     
 
-def save_dataframe_to_excel_orders(output_dir, output_file, data, sheet_name, columns_to_plot, colors, grafico_positions, dropbox_var):
+def save_dataframe_to_excel_orders(output_dir, output_file, data, sheet_name, columns_to_plot, colors, grafico_positions, dropbox_var, drive_var):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -220,11 +224,13 @@ def save_dataframe_to_excel_orders(output_dir, output_file, data, sheet_name, co
     
     if(dropbox_var):
         url = upload_to_dropbox(full_path, dropbox_path=f"/MyReports/{output_dir}/{output_file}.xlsx")
+    if(drive_var):
+        url = upload_to_drive(full_path, folder_id="1F1VZxlp5IxkQEo4WD0Bt8VEJZ28OhGut")
     
     return url
 
 
-def save_dataframe_to_excel_ga4(percentages_table, percentages_previous_step, final_table_spaced_with_previous, nombre_salida, carpeta_salida, dropbox_var):
+def save_dataframe_to_excel_ga4(percentages_table, percentages_previous_step, final_table_spaced_with_previous, nombre_salida, carpeta_salida, dropbox_var, drive_var):
     # Crear la carpeta si no existe
     if not os.path.exists(carpeta_salida):
         os.makedirs(carpeta_salida)
@@ -238,7 +244,7 @@ def save_dataframe_to_excel_ga4(percentages_table, percentages_previous_step, fi
     plt.figure(figsize=(10, 6))
     for step in percentages_table.index:
         short_label = step.replace(' (%)', '').split(' ')[0]
-        numeric_values = percentages_table.loc[step].drop('Total', errors='ignore').replace('%', '', regex=True).astype(float)
+        numeric_values = (percentages_table.loc[step].drop('Total', errors='ignore').replace('%', '', regex=True).replace('', '0').astype(float))
         plt.plot(numeric_values, label=short_label)
 
     plt.title('Percentage Transition by Step')
@@ -292,6 +298,8 @@ def save_dataframe_to_excel_ga4(percentages_table, percentages_previous_step, fi
 
     if(dropbox_var):
         url = upload_to_dropbox(excel_path, dropbox_path=f"/MyReports/{carpeta_salida}/{nombre_salida}") 
+    if(drive_var):
+        url = upload_to_drive(excel_path, folder_id="1F1VZxlp5IxkQEo4WD0Bt8VEJZ28OhGut")
         
     urls.insert(0, url)
     return urls

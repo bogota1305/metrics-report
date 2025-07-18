@@ -78,7 +78,7 @@ def process_data(start_date, end_date):
 
     return daily_summary, total_sales
 
-def get_sales(start_date, end_date, folder_name, dropbox_var):
+def get_sales(start_date, end_date, folder_name, dropbox_var, drive_var):
     
     file_name = 'Sales'
     resumeData, total_sales = process_data(start_date, end_date)
@@ -88,6 +88,6 @@ def get_sales(start_date, end_date, folder_name, dropbox_var):
     colors = ['#0000FF', '#008000']
     grafico_positions = ['H2', 'H24']
 
-    urls = save_dataframe_to_excel(folder_name, file_name, resumeData, 'General', columns_to_plot, colors, grafico_positions, dropbox_var)
+    urls = save_dataframe_to_excel(folder_name, file_name, resumeData, 'General', columns_to_plot, colors, grafico_positions, dropbox_var, drive_var)
 
     return total_sales, urls

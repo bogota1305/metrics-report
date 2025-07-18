@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from modules.excel_creator import save_dataframe_to_excel_ga4
 from report import anotar_datos_excel
 
-def get_funnel(ruta_archivo, nombre_salida, columna_inicio, fila_inicio, carpeta_salida, dropbox_var):
+def get_funnel(ruta_archivo, nombre_salida, columna_inicio, fila_inicio, carpeta_salida, dropbox_var, drive_var, month =''):
     
     data = pd.read_csv(ruta_archivo, encoding='utf-8', skiprows=9)
 
@@ -86,7 +86,7 @@ def get_funnel(ruta_archivo, nombre_salida, columna_inicio, fila_inicio, carpeta
         [final_table_spaced, empty_row, percentages_previous_step]
     )
 
-    urls = save_dataframe_to_excel_ga4(percentages_table, percentages_previous_step, final_table_spaced_with_previous, nombre_salida, carpeta_salida, dropbox_var)
+    urls = save_dataframe_to_excel_ga4(percentages_table, percentages_previous_step, final_table_spaced_with_previous, nombre_salida, carpeta_salida, dropbox_var, drive_var)
 
     # Obtener los datos de la última columna de percentages_previous_step como una lista
     # Obtener los datos de la última columna de percentages_table como una lista
@@ -99,8 +99,9 @@ def get_funnel(ruta_archivo, nombre_salida, columna_inicio, fila_inicio, carpeta
     datos.insert(0, f"{int(reference_value)} (100%)")
 
     # Llamar a la función anotar_datos_excel con los datos actualizados
-    anotar_datos_excel(datos, columna_inicio, fila_inicio)
+    anotar_datos_excel(datos, columna_inicio, fila_inicio, False, month)
     
-    if(dropbox_var):
-        anotar_datos_excel(urls, columna_inicio, fila_inicio, True)
+    if(dropbox_var or drive_var):
+        anotar_datos_excel(urls, columna_inicio, fila_inicio, True, month)
+        
     
