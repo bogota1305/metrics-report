@@ -3,6 +3,8 @@ import tkinter as tk
 from tkinter import Label, Button, messagebox, Listbox, END, MULTIPLE, Frame
 from tkcalendar import Calendar
 from modules.database_queries import execute_query
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 # Diccionario de productos actualizado
 product_dict = {
@@ -313,7 +315,7 @@ def process_product_combinations(df, combinations):
             not_reordered = len(set(users_with_combo) & set(single_order_users))
             
             total = reordered + not_reordered
-            rebuy_percentage = round(reordered / total * 100, 2) if total > 0 else 0  # Línea corregida
+            rebuy_percentage = round(reordered / total * 100, 2) if total > 0 else 0 
             
             results.append({
                 'product_name': combo_name,
@@ -392,9 +394,6 @@ def main():
         filtered_df = main_df[main_df['customer_id'].isin(valid_users)]
         
         # Procesar los reportes seleccionados
-        from openpyxl import Workbook
-        from openpyxl.utils.dataframe import dataframe_to_rows
-        
         wb = Workbook()
         
         if 'total' in report_types:

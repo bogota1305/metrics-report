@@ -231,6 +231,13 @@ This Python project processes CSV files exported from Google Analytics to genera
   - tkinter
   - xlsxwriter
 
+## Installation
+
+1. Install required dependencies:
+   ```bash
+   pip install xlsxwriter
+   ```
+
 ## Components
 
 ### 1. selectFiles.py
@@ -286,3 +293,56 @@ This section allows you to record the data obtained from all the files generated
 1. Have the file `metricas.xlsx` (provided in the repository) located in the same base folder of the repository
 2. If the name of the file or sheet is changed, go to `report.py` and change the variables `archivo_excel` and `hoja_nombre` to the corresponding ones.
 3. This step is not necessary for the execution of the code, so if you do not want to obtain these metrics, the `metricas.xlsx` file can be deleted.
+
+# 4. Upload Cloud 
+
+## Overview
+
+This section allows you to upload the report files and the general metrics file to the cloud, either in Google drive or Dropbox.
+
+## Requirements
+
+- Python 3.7+
+- Libraries:
+  - google-api-python-client
+  - google-auth-httplib2
+  - google-auth-oauthlib
+  - dropbox
+- Authentication
+  - Google drive credentials file (.json)
+  - Dropbox token
+
+## Installation
+
+1. Install required dependencies:
+   ```bash
+   pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib dropbox
+   ```
+## Components
+
+### 1. uploadCloud.py
+
+This module allows you to upload files to the cloud
+
+  - Functions:
+
+    - upload_to_drive
+    Allows the user to upload files to Google Drive
+
+    - upload_to_dropbox
+    Allows the user to upload files to Dropbox
+ 
+## How It Works
+
+1. Get Google drive credentials file:
+  - Go to [Google Cloud Console](https://console.cloud.google.com/)
+  - Create a project and enable the Google Drive API.
+  - Download the credentials JSON file.
+  - Rename the file to credentials.json and place it in the root directory
+2. Get Dropbox token:
+  - Go to [Dropbox Developers](https://www.dropbox.com/developers/apps)
+  - Create a new app and generate an access token.
+  - Paste the token in the uploadCloud.py file on line 32:
+  -     dbx = dropbox.Dropbox(‘TOKEN’)
+3. When you run the script after selecting the files for the funels and selecting the dates and database queries you want to perform, a window will pop up with two checkboxes, Dropbox and Google Drive, select where you want the file to be saved and continue. If you do not select any of them the file will only be stored locally.
+   
