@@ -98,6 +98,8 @@ product_dict = {
     'IT00000000000000000000000000000102': 'Black Hair and Beard Dye',
     'IT00000000000000000000000000000105': 'Jet Black Hair and Beard Dye FBM',
     'IT00000000000000000000000000000106': 'Dark Brown Hair and Beard Dye FBM',
+    'IT00000000000000000000001004170006': 'Partial Coverage Beard Kit',
+    'IT00000000000000000000001004170007': 'Full Coverage Beard Kit'
 }
 
 def open_rebuy_date_selector():
@@ -333,30 +335,8 @@ def process_product_combinations(df, combinations):
         result = result.sort_values('product_name', ascending=True)
     
     return result
-
-def main():
-    # 1. Obtener fechas del selector
-    start_date, end_date = open_rebuy_date_selector()
-    
-    if not start_date or not end_date:
-        return
-    
-    # 2. Seleccionar tipo de reporte
-    report_types = select_report_type()
-    
-    if not report_types:
-        return
-    
-    # 3. Si se seleccionó combinaciones, obtener las combinaciones
-    combinations = []
-    if 'combinations' in report_types:
-        combinations = select_product_combinations()
-        if not combinations:
-            messagebox.showwarning("Advertencia", "No se seleccionaron combinaciones. No se generará reporte de combinaciones.")
-            report_types.remove('combinations')
-            if not report_types:
-                return
-    
+            
+def proccesdata(start_date, end_date, report_types, combinations):
     # 4. Obtener datos con la nueva consulta que incluye created_at
     query_all_orders = """
     WITH ordenes_con_beard AS (
@@ -364,11 +344,24 @@ def main():
         FROM bi.fact_orders fo
         JOIN bi.fact_sales_order_items oi ON fo.id = oi.salesOrderId
         WHERE oi.category = 'IG00000000000000000000000000000029'
+    ),
+    ordenes_con_hair AS (
+        SELECT DISTINCT fo.id
+        FROM bi.fact_orders fo
+        JOIN bi.fact_sales_order_items oi ON fo.id = oi.salesOrderId
+        WHERE oi.category = 'IG00000000000000000000000000000028'
     )
-    SELECT fo.customer_id, fo.id, oi.itemId, fo.created_at
+    SELECT 
+        fo.customer_id, 
+        fo.id, 
+        oi.itemId, 
+        fo.created_at,
+        CASE WHEN hair.id IS NOT NULL THEN 1 ELSE 0 END as has_hair_product
     FROM bi.fact_orders fo
     JOIN bi.fact_sales_order_items oi ON fo.id = oi.salesOrderId
+    LEFT JOIN ordenes_con_hair hair ON fo.id = hair.id
     WHERE fo.status != 'CANCELLED'
+    AND fo.status != 'PAYMENT_ERROR'
     AND fo.order_plan = 'OTO'
     AND fo.recurrent = 0
     AND fo.id IN (SELECT id FROM ordenes_con_beard)
@@ -377,12 +370,20 @@ def main():
     
     # 5. Obtener datos de primera orden
     query_first_orders = f"""
-    SELECT fo.customer_id
+    WITH ordenes_con_beard AS (
+        SELECT DISTINCT fo.id
+        FROM bi.fact_orders fo
+        JOIN bi.fact_sales_order_items oi ON fo.id = oi.salesOrderId
+        WHERE oi.category = 'IG00000000000000000000000000000029'
+    )
+    SELECT distinct fo.customer_id
     FROM bi.fact_orders fo
     JOIN bi.fact_sales_order_items oi ON fo.id = oi.salesOrderId
     WHERE fo.status != 'CANCELLED'
+    AND fo.status != 'PAYMENT_ERROR'
     AND fo.order_plan = 'OTO'
     AND fo.recurrent = 0
+    AND fo.id IN (SELECT id FROM ordenes_con_beard)
     AND fo.is_first_order = 1
     AND fo.created_at BETWEEN '{start_date}' AND '{end_date}'
     """
@@ -392,6 +393,15 @@ def main():
         # Filtrar solo usuarios que están en el listado de primera compra
         valid_users = first_time_buyers_df['customer_id'].unique()
         filtered_df = main_df[main_df['customer_id'].isin(valid_users)]
+        
+        # Calcular estadísticas de categorías
+        total_orders = filtered_df['id'].nunique()
+        hair_orders = filtered_df[filtered_df['has_hair_product'] == 1]['id'].nunique()
+        hair_percentage = (hair_orders / total_orders * 100) if total_orders > 0 else 0
+        
+        print(f"Total órdenes con productos de barba: {total_orders}")
+        print(f"Órdenes que también tienen productos de pelo: {hair_orders}")
+        print(f"Porcentaje de órdenes con productos de pelo: {hair_percentage:.2f}%")
         
         # Procesar los reportes seleccionados
         wb = Workbook()
@@ -445,6 +455,34 @@ def main():
         print("Reporte generado exitosamente con la nueva metodología")
     else:
         print("No se encontraron datos para generar el reporte")
+
+
+def main():
+    # # 1. Obtener fechas del selector
+    # start_date, end_date = open_rebuy_date_selector()
+    
+    # if not start_date or not end_date:
+    #     return
+    
+    # 2. Seleccionar tipo de reporte
+    report_types = select_report_type()
+    
+    if not report_types:
+        return
+    
+    # 3. Si se seleccionó combinaciones, obtener las combinaciones
+    combinations = []
+    if 'combinations' in report_types:
+        combinations = select_product_combinations()
+        if not combinations:
+            messagebox.showwarning("Advertencia", "No se seleccionaron combinaciones. No se generará reporte de combinaciones.")
+            report_types.remove('combinations')
+            if not report_types:
+                return
+            
+    proccesdata('2021-01-01', '2022-12-11', report_types, combinations)
+    proccesdata('2022-12-20', '2023-12-31', report_types, combinations)
+    proccesdata('2024-01-01', '2025-01-31', report_types, combinations)
 
 if __name__ == "__main__":
     main()
