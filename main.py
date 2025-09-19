@@ -18,7 +18,7 @@ funnels_report = True
 database_report = True
 stripe_block_payments = True
 folder_name = 'funnels'
-columna = 9
+columna = 11
 dropbox_var = False
 drive_var = False
 
@@ -69,12 +69,15 @@ if database_report:
         realRenewalFrequency(start_date, end_date, folder_name) 
     
     if(full_control_var == 1):
-        percentageFC = fullControl(start_date, end_date)
-        anotar_datos_excel(percentageFC, columna, 79, False, actualMonth)
+        percentageFC, newSubsFC, totalSubsFC, renewalFC= fullControl(start_date, end_date)
+        anotar_datos_excel(newSubsFC, columna, 77, False, actualMonth)
+        anotar_datos_excel(percentageFC, columna, 80, False, actualMonth)
+        anotar_datos_excel(totalSubsFC, columna, 79, False, actualMonth)
+        anotar_datos_excel(renewalFC, columna, 78, False, actualMonth)
 
     if(subs_var == 1):
         subsPercentage = subs(start_date, end_date)
-        anotar_datos_excel(subsPercentage, columna, 87, False, actualMonth)
+        anotar_datos_excel(subsPercentage, columna, 88, False, actualMonth)
 
 if funnels_report:
     if archivos['Customized Kit - Funnel'] != None:
