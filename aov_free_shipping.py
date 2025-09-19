@@ -20,7 +20,7 @@ def get_total_orders(start_date, end_date, is_subscribed):
     query = f"""
     SELECT COUNT(*) AS total_orders
     FROM 
-        sales_and_subscriptions.intents
+        prod_sales_and_subscriptions.intents
     WHERE 
         createdAt < '{end_date}'
         AND createdAt > '{start_date}'
@@ -353,7 +353,7 @@ SELECT
     ) AS units,
     content -- Incluimos content por si acaso, aunque no se procese directamente en _process_sheet
 FROM 
-    sales_and_subscriptions.intents
+    prod_sales_and_subscriptions.intents
 WHERE 
     createdAt > '{start_date}'
     AND createdAt < '{end_date}'
@@ -406,7 +406,7 @@ SELECT
     ) AS units,
     content -- Incluimos content por si acaso, aunque no se procese directamente en _process_sheet
 FROM 
-    sales_and_subscriptions.intents
+    prod_sales_and_subscriptions.intents
 WHERE 
     createdAt > '{start_date}'
     AND createdAt < '{end_date}' 
@@ -422,18 +422,18 @@ def saveFile(file_name, start_date, end_date, is_subscribed):
         os.makedirs(folder_name)
     full_path = os.path.join(folder_name, f"{file_name}_{start_date}_{end_date}.xlsx")
     # Pasamos is_subscribed a getQuerry y generate_order_report
-    # query = getQuerry(start_date, end_date, is_subscribed)
-    query = getQuerryB(start_date, end_date, is_subscribed)
+    query = getQuerry(start_date, end_date, is_subscribed)
+    # query = getQuerryB(start_date, end_date, is_subscribed)
     generate_order_report(query, full_path, start_date, end_date, is_subscribed) # Pasamos is_subscribed aquí también
     upload_to_drive(full_path, folder_id="1F1VZxlp5IxkQEo4WD0Bt8VEJZ28OhGut")
 
 # Generar reportes con los parámetros adicionales (sin cambios en esta sección)
-# saveFile('oto_free_shipping.xlsx', '2025-02-20', '2025-04-17', False)
-# saveFile('sub_free_shipping.xlsx', '2025-02-20', '2025-04-17', True)
+saveFile('oto_free_shipping.xlsx', '2025-02-20', '2025-07-21', False)
+saveFile('sub_free_shipping.xlsx', '2025-02-20', '2025-07-21', True)
 # saveFile('oto_no_free_shipping.xlsx', '2024-12-20', '2025-02-20', False)
 # saveFile('sub_no_free_shipping.xlsx', '2024-12-20', '2025-02-20', True)
 
 # saveFile('oto_free_shipping_no_rule', '2025-02-20', '2025-07-14', False)
 # saveFile('sub_free_shipping_no_rule', '2025-02-20', '2025-07-14', True)
-saveFile('oto_no_free_shipping_no_rule', '2024-12-20', '2025-07-14', False)
-saveFile('sub_no_free_shipping_no_rule', '2024-12-20', '2025-07-14', True)
+# saveFile('oto_no_free_shipping_no_rule', '2024-12-20', '2025-07-14', False)
+# saveFile('sub_no_free_shipping_no_rule', '2024-12-20', '2025-07-14', True)

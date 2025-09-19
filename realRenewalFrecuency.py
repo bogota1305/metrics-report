@@ -139,9 +139,9 @@ def realRenewalFrequency(start_date, end_date, folder_name):
     FROM 
         bi.fact_orders fo
     JOIN
-        sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
+        prod_sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
     JOIN
-        sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
+        prod_sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
     WHERE 
         fo.subscription_id IS NOT NULL
         AND (
@@ -166,9 +166,9 @@ def realRenewalFrequency(start_date, end_date, folder_name):
     FROM 
         bi.fact_orders fo
     JOIN
-        sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
+        prod_sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
     JOIN
-        sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
+        prod_sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
     WHERE 
         fo.subscription_id IS NOT NULL
         AND su.additionalFields ->> "$.sms_renewal" = "true" 
@@ -188,9 +188,9 @@ def realRenewalFrequency(start_date, end_date, folder_name):
     FROM 
         bi.fact_orders fo
     JOIN
-        sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
+        prod_sales_and_subscriptions.subscriptions su ON fo.subscription_id = su.id
     JOIN
-        sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
+        prod_sales_and_subscriptions.subscriptions_view sv ON fo.subscription_id = sv.subscription_id
     WHERE 
         fo.subscription_id IS NOT NULL    
         AND su.status != 'CANCELLED'

@@ -15,7 +15,7 @@ def process_data(start_date, end_date):
     # Consulta para obtener los datos
     query_orders = f"""
     SELECT *
-    FROM sales_and_subscriptions.payments
+    FROM prod_sales_and_subscriptions.payments
     WHERE createdAt >= '{query_start_date} 00:00:00'
     AND createdAt < '{end_date} 00:00:00';
     """

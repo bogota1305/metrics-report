@@ -9,9 +9,9 @@ SELECT
     sc.reason,
     sc.createdAt
 FROM 
-    sales_and_subscriptions.cancellations sc
+    prod_sales_and_subscriptions.cancellations sc
 INNER JOIN
-    sales_and_subscriptions.subscription_items si
+    prod_sales_and_subscriptions.subscription_items si
     ON sc.subscriptionId = si.subscriptionId
 WHERE
     si.itemId = 'IT00000000000000000000000000000002'
@@ -24,9 +24,9 @@ SELECT
     sc.reason,
     sc.createdAt
 FROM 
-    sales_and_subscriptions.cancellations sc
+    prod_sales_and_subscriptions.cancellations sc
 INNER JOIN
-    sales_and_subscriptions.subscription_items si
+    prod_sales_and_subscriptions.subscription_items si
     ON sc.subscriptionId = si.subscriptionId
 WHERE
     si.itemId = 'IT00000000000000000000000000000050'
@@ -39,9 +39,9 @@ SELECT
     sc.reason,
     sc.createdAt
 FROM 
-    sales_and_subscriptions.cancellations sc
+    prod_sales_and_subscriptions.cancellations sc
 INNER JOIN
-    sales_and_subscriptions.subscription_items si
+    prod_sales_and_subscriptions.subscription_items si
     ON sc.subscriptionId = si.subscriptionId
 WHERE
     si.itemId NOT IN ('IT00000000000000000000000000000002', 'IT00000000000000000000000000000050')

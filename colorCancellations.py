@@ -47,12 +47,12 @@ SELECT
     sv.legacy_category,
     si.itemId
 FROM 
-    sales_and_subscriptions.cancellations c
+    prod_sales_and_subscriptions.cancellations c
 INNER JOIN 
-    sales_and_subscriptions.subscriptions_view sv
+    prod_sales_and_subscriptions.subscriptions_view sv
     ON c.subscriptionId = sv.subscription_id
 INNER JOIN 
-    sales_and_subscriptions.subscription_items si
+    prod_sales_and_subscriptions.subscription_items si
     ON c.subscriptionId = si.subscriptionId
 WHERE 
     si.itemId IN ({})

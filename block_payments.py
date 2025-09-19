@@ -133,7 +133,7 @@ def get_blocked_payments(ruta_archivo_blocked, ruta_archivo_payments, nombre_sal
     # 12. Realizar la consulta a la base de datos para obtener todos los correos de la tabla customers
     consulta_customers = """
         SELECT id, email
-        FROM sales_and_subscriptions.customers;
+        FROM prod_sales_and_subscriptions.customers;
     """
     customers_df = pd.DataFrame(execute_query(consulta_customers), columns=['id', 'email'])
 
@@ -159,7 +159,7 @@ def get_blocked_payments(ruta_archivo_blocked, ruta_archivo_payments, nombre_sal
             # Asegúrate de que los valores de customerId estén entre comillas simples
             consulta_sales_orders = f"""
                 SELECT customerId, createdAt
-                FROM sales_and_subscriptions.sales_orders
+                FROM prod_sales_and_subscriptions.sales_orders
                 WHERE customerId IN ({','.join([f"'{id}'" for id in ids_usuarios_existentes])});
             """
             sales_orders_df = pd.DataFrame(execute_query(consulta_sales_orders), columns=['customerId', 'createdAt'])
