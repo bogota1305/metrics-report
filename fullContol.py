@@ -42,7 +42,7 @@ def fullControl(start_date, end_date):
     JOIN
         prod_sales_and_subscriptions.subscriptions s
         ON s.id = v.subscription_id
-    WHERE v.first_date_sms_renewal_true > "2025-07-01 08:00:00" AND v.first_date_sms_renewal_true < "2025-08-01 08:00:00"
+    WHERE v.first_date_sms_renewal_true > "{start_date}" AND v.first_date_sms_renewal_true < "{end_date}"
     GROUP BY
         v.subscription_id,
         DATE(CONVERT_TZ(v.first_date_sms_renewal_true, 'UTC', 'America/Los_Angeles'));
@@ -66,7 +66,8 @@ def fullControl(start_date, end_date):
         ON v.subscription_id = r.subscriptionId
         AND r.createdAt > DATE_ADD(v.first_date_sms_renewal_true, INTERVAL 1 DAY)
         AND r.status = 'SUCCESS'
-        AND r.createdAt > "2025-07-01 08:00:00" AND r.createdAt < "2025-08-01 08:00:00"
+        AND r.createdAt > "{start_date}"
+        AND (v.last_date_sms_renewal_true is null OR r.createdAt < v.last_date_sms_renewal_true)
     JOIN
         prod_sales_and_subscriptions.subscriptions s
         ON s.id = v.subscription_id
@@ -94,8 +95,6 @@ def fullControl(start_date, end_date):
     print(f"Porcentage: {percentage_new_subs} Nuevas {new_subs} Totales {total_subs} renovaciones {renewals}")
 
     return percentage_array, new_subs_array, total_subs_array, renewal_subs_array
-
-
 
 
 

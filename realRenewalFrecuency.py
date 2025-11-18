@@ -60,14 +60,32 @@ def renewalFrequency(query, fileName):
     general_avg_days = result_df['days_between_orders'].mean()
     freq_avg_weeks = result_df['frequency_weeks'].mean()
     
-    # Calcular promedios por categoría
+   # Calcular modas generales
+    general_mode_weeks = result_df['weeks_between_orders'].mode()
+    general_mode_days = result_df['days_between_orders'].mode()
+    freq_mode_weeks = result_df['frequency_weeks'].mode()
+    
+    # Calcular promedios y modas por categoría
     beard_data = result_df[result_df['category'] == 'BEARD']
-    beard_avg_weeks = beard_data['weeks_between_orders'].mean()
-    beard_avg_days = beard_data['days_between_orders'].mean()
+    beard_avg_weeks = beard_data['weeks_between_orders'].mean() if not beard_data.empty else 0
+    beard_avg_days = beard_data['days_between_orders'].mean() if not beard_data.empty else 0
+    beard_mode_weeks = beard_data['weeks_between_orders'].mode() if not beard_data.empty else pd.Series([0])
+    beard_mode_days = beard_data['days_between_orders'].mode() if not beard_data.empty else pd.Series([0])
     
     hair_data = result_df[result_df['category'] == 'HAIR']
-    hair_avg_weeks = hair_data['weeks_between_orders'].mean()
-    hair_avg_days = hair_data['days_between_orders'].mean()
+    hair_avg_weeks = hair_data['weeks_between_orders'].mean() if not hair_data.empty else 0
+    hair_avg_days = hair_data['days_between_orders'].mean() if not hair_data.empty else 0
+    hair_mode_weeks = hair_data['weeks_between_orders'].mode() if not hair_data.empty else pd.Series([0])
+    hair_mode_days = hair_data['days_between_orders'].mode() if not hair_data.empty else pd.Series([0])
+    
+    # Función para formatear la moda (puede haber múltiples valores)
+    def format_mode(mode_series):
+        if len(mode_series) == 0:
+            return "No data"
+        elif len(mode_series) == 1:
+            return f"{mode_series.iloc[0]:.2f}"
+        else:
+            return ", ".join([f"{val:.2f}" for val in mode_series.head(3)])  # Máximo 3 valores
     
     # Crear DataFrames para las hojas de Excel
     details_df = result_df[[
@@ -78,24 +96,37 @@ def renewalFrequency(query, fileName):
         'category'
     ]]
     
+    # DataFrame de comparación expandido con modas
     comparison_df = pd.DataFrame({
         'Metric': [
             'Configured Frequency (avg)',
+            'Configured Frequency (mode)',
             'Actual Frequency (avg)',
+            'Actual Frequency (mode)',
             'BEARD Frequency (avg)',
-            'HAIR Frequency (avg)'
+            'BEARD Frequency (mode)',
+            'HAIR Frequency (avg)',
+            'HAIR Frequency (mode)'
         ],
         'Weeks': [
             freq_avg_weeks,
+            format_mode(freq_mode_weeks),
             general_avg_weeks,
+            format_mode(general_mode_weeks),
             beard_avg_weeks,
-            hair_avg_weeks
+            format_mode(beard_mode_weeks),
+            hair_avg_weeks,
+            format_mode(hair_mode_weeks)
         ],
         'Days': [
             freq_avg_weeks * 7,
+            format_mode(freq_mode_weeks * 7) if not freq_mode_weeks.empty else "No data",
             general_avg_days,
+            format_mode(general_mode_days),
             beard_avg_days,
-            hair_avg_days
+            format_mode(beard_mode_days),
+            hair_avg_days,
+            format_mode(hair_mode_days)
         ]
     })
     
@@ -212,3 +243,6 @@ def saveFile(folder_name, file_name, query):
     renewalFrequency(query, full_path)
     #upload_to_drive(full_path, folder_id="1F1VZxlp5IxkQEo4WD0Bt8VEJZ28OhGut")
     #upload_to_dropbox(full_path, dropbox_path=f"/MyReports/{folder_name}/{file_name}")
+
+# realRenewalFrequency('2024-01-01', '2025-01-01', 'renewal')
+    

@@ -18,7 +18,7 @@ funnels_report = True
 database_report = True
 stripe_block_payments = True
 folder_name = 'funnels'
-columna = 11
+columna = 13
 dropbox_var = False
 drive_var = False
 

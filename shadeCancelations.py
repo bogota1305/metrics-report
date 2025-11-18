@@ -95,7 +95,7 @@ def procesar_razon(razon):
     razon_str = str(razon).strip()
     
     # Casos especiales que requieren más detalle
-    special_cases = ["I don't like my results", "I experienced a skin reaction", "I don’t like my results"]
+    special_cases = ["I don't like my results", "I experienced a skin reaction", "I don't like my results"]
     
     for case in special_cases:
         if razon_str.startswith(case):
@@ -140,7 +140,7 @@ def obtener_suscripciones_activas(startDate, endDate):
     WHERE fo.status NOT IN ('CANCELLED','PAYMENT_ERROR')
     AND fo.created_at BETWEEN '{startDate}' AND '{endDate}'
     AND subIt.itemId IN ('{item_ids_str}')
-	GROUP BY sub.id;
+    GROUP BY sub.id;
     """
     
     df_suscripciones = execute_query(query)
@@ -264,10 +264,24 @@ def analizar_cancelaciones_por_razon(df):
     
     return resultado
 
-def analizar_cancelaciones_por_razon_y_shade(df):
+def analizar_cancelaciones_por_razon_y_shade(df, filtro_etnia=None):
     """
     Analiza las cancelaciones por razón procesada con columnas para cada shade
+    Si se especifica filtro_etnia, solo incluye cancelaciones de esa etnia
     """
+    # Filtrar por etnia si se especifica
+    if filtro_etnia == 13:
+        df = df[df['has_13'] == True]
+        nombre_etnia = "CAUCASIAN"
+    elif filtro_etnia == 14:
+        df = df[df['has_14'] == True]
+        nombre_etnia = "AFRICAN"
+    elif filtro_etnia == 15:
+        df = df[df['has_15'] == True]
+        nombre_etnia = "ASIAN"
+    else:
+        nombre_etnia = "TODAS"
+    
     # Procesar las razones
     df['razon_procesada'] = df['reason'].apply(procesar_razon)
     
@@ -327,7 +341,7 @@ def analizar_cancelaciones_por_razon_y_shade(df):
     # Ordenar por total de cancelaciones (descendente)
     resultado = resultado.sort_values('total_cancelaciones', ascending=False)
     
-    return resultado
+    return resultado, nombre_etnia
 
 def ajustar_ancho_columnas(archivo_excel):
     """
@@ -416,12 +430,21 @@ def main(startDate, endDate):
     tabla_etnias = crear_tabla_etnias(df_suscripciones)
     tabla_shades = crear_tabla_shades(df_suscripciones)
     
-    # 4. Procesar los datos para las dos páginas
+    # 4. Procesar los datos para las páginas
     print("Procesando datos de cancelaciones por razón (con etnias)...")
     df_por_razon = analizar_cancelaciones_por_razon(df)
     
     print("Procesando datos de cancelaciones por razón (con shades)...")
-    df_por_razon_y_shade = analizar_cancelaciones_por_razon_y_shade(df)
+    df_por_razon_y_shade, _ = analizar_cancelaciones_por_razon_y_shade(df)
+    
+    print("Procesando datos de cancelaciones por razón (CAUCASIAN)...")
+    df_caucasian, _ = analizar_cancelaciones_por_razon_y_shade(df, 13)
+    
+    print("Procesando datos de cancelaciones por razón (AFRICAN)...")
+    df_african, _ = analizar_cancelaciones_por_razon_y_shade(df, 14)
+    
+    print("Procesando datos de cancelaciones por razón (ASIAN)...")
+    df_asian, _ = analizar_cancelaciones_por_razon_y_shade(df, 15)
     
     # 5. Guardar en Excel
     nombre_archivo = f"analisis_cancelaciones_{startDate}_to_{endDate}.xlsx"
@@ -431,9 +454,35 @@ def main(startDate, endDate):
         df_por_razon.to_excel(writer, sheet_name='Por Razon (Etnias)', index=False, startrow=0)
         tabla_etnias.to_excel(writer, sheet_name='Por Razon (Etnias)', index=False, startrow=len(df_por_razon) + 3)
         
-        # Hoja 2: Por Razon (Shades)
-        df_por_razon_y_shade.to_excel(writer, sheet_name='Por Razon (Shades)', index=False, startrow=0)
-        tabla_shades.to_excel(writer, sheet_name='Por Razon (Shades)', index=False, startrow=len(df_por_razon_y_shade) + 3)
+        # Hoja 2: Por Razon (Shades) - Múltiples tablas
+        start_row = 0
+        
+        # Tabla principal (Todas las etnias)
+        df_por_razon_y_shade.to_excel(writer, sheet_name='Por Razon (Shades)', index=False, startrow=start_row)
+        start_row += len(df_por_razon_y_shade) + 3
+        
+        # Tabla CAUCASIAN
+        writer.sheets['Por Razon (Shades)'].cell(row=start_row, column=1, value="CAUCASIAN (13)")
+        start_row += 1
+        df_caucasian.to_excel(writer, sheet_name='Por Razon (Shades)', index=False, startrow=start_row)
+        start_row += len(df_caucasian) + 3
+        
+        # Tabla AFRICAN
+        writer.sheets['Por Razon (Shades)'].cell(row=start_row, column=1, value="AFRICAN (14)")
+        start_row += 1
+        df_african.to_excel(writer, sheet_name='Por Razon (Shades)', index=False, startrow=start_row)
+        start_row += len(df_african) + 3
+        
+        # Tabla ASIAN
+        writer.sheets['Por Razon (Shades)'].cell(row=start_row, column=1, value="ASIAN (15)")
+        start_row += 1
+        df_asian.to_excel(writer, sheet_name='Por Razon (Shades)', index=False, startrow=start_row)
+        start_row += len(df_asian) + 3
+        
+        # Tabla de suscripciones activas por shade
+        writer.sheets['Por Razon (Shades)'].cell(row=start_row, column=1, value="Suscripciones Activas por Shade")
+        start_row += 1
+        tabla_shades.to_excel(writer, sheet_name='Por Razon (Shades)', index=False, startrow=start_row)
     
     # 6. Ajustar ancho de columnas
     ajustar_ancho_columnas(nombre_archivo)
@@ -457,5 +506,5 @@ def main(startDate, endDate):
 
 # Ejecutar para los períodos deseados
 if __name__ == "__main__":
-    main('2024-01-01', '2025-04-30')
-    main('2025-05-01', '2025-08-30')
+    main('2025-01-01', '2025-04-01')
+    # main('2025-05-01', '2025-08-30')

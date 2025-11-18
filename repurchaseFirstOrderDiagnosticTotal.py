@@ -728,9 +728,9 @@ def main():
     
     # Definir los rangos de fechas y sus códigos/nombres
     rangos_fechas = [
-        {'start': '2021-01-01', 'end': '2022-12-11', 'codigo': 'CTF', 'nombre': 'Control Timeframe'},
-        {'start': '2022-12-20', 'end': '2023-12-31', 'codigo': 'DVL', 'nombre': 'OTO Developer change'},
-        {'start': '2024-01-01', 'end': '2025-01-31', 'codigo': 'AMZ', 'nombre': 'Post Amazon Launch'}
+        # {'start': '2021-01-01', 'end': '2022-12-11', 'codigo': 'CTF', 'nombre': 'Control Timeframe'},
+        # {'start': '2022-12-20', 'end': '2023-12-31', 'codigo': 'DVL', 'nombre': 'OTO Developer change'},
+        {'start': '2025-01-01', 'end': '2025-04-01', 'codigo': 'Q1 - 2025', 'nombre': 'Q1 - 2025'}
     ]
     
     # Crear diccionario de nombres de rangos
